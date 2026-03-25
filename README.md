@@ -31,18 +31,6 @@ cd hallucination-detection
 pip install -r requirements.txt
 ```
 
-Required packages:
-```
-torch
-transformers
-datasets
-pandas
-numpy
-tqdm
-accelerate
-sentencepiece
-captum
-```
 
 ---
 
