@@ -22,8 +22,8 @@ It supports multiple datasets and chunked execution for large-scale hallucinatio
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/hallucination-detection.git
-cd hallucination-detection
+git clone https://github.com/yourusername/LLM_Hallu_Legal.git
+cd LLM_Hallu_Legal
 ```
 
 ### 2. Install dependencies
