@@ -9,13 +9,12 @@ It supports multiple datasets and chunked execution for large-scale hallucinatio
 
 - Supports LLaMA, Falcon, and OPT models  
 - Yes/No QA with strict question templates  
-- Works with multiple datasets (`custom_qa`, `capitals`, `place_of_birth`, `trivia_qa`)  
+- Works with multiple datasets (`ECHR`, `ILDC`)  
 - Extracts:  
   - Fully connected (MLP) activations  
-  - Attention layer activations  
-  - Integrated Gradients attributions  
+  - Attention layer activations   
 - Chunked data processing: `--iteration`, `--interval`  
-- Saves results as `.pickle` files  
+- Saves results as `.pickle` and `json` files  
 
 ---
 
@@ -53,12 +52,11 @@ Run the script using **argparse** command-line arguments.
 
 ### ✅ Basic Run
 ```bash
-python Hallucination.py
+python llm_Inference_code/llm_Inference_ECHR.py
 ```
 
 Defaults:
-- `model_name = open_llama_7b`
-- `dataset_name = custom_qa`
+- `model_name = Meta-Llama-3.1-8B-Instruct`
 - `iteration = 0`
 - `interval = 2500`
 
@@ -67,41 +65,32 @@ Defaults:
 ## 🔧 Select a Model
 
 ```bash
-python Hallucination.py --model_name open_llama_13b
+python llm_Inference_code/llm_Inference_ECHR.py --model_name mistral-7b-instruct-v0.3
 ```
 
 Supported models:
-- falcon-40b  
-- falcon-7b  
-- open_llama_13b  
-- open_llama_7b  
-- opt-6.7b  
-- opt-30b  
+- mistral-7b-instruct-v0.3  
+- Meta-Llama-3.1-8B-Instruct 
+- gemma-7b-it  
 
 ---
 
 ## 📂 Select a Dataset
 
-```bash
-python Hallucination.py --dataset_name capitals
-```
 
 Dataset options:
 
 | dataset_name      | description                               |
 |-------------------|-------------------------------------------|
-| custom_qa         | CSV with Question + Answer                |
-| capitals          | CSV subject → capital                     |
-| place_of_birth    | CSV subject → birthplace                  |
-| trivia_qa         | HuggingFace Trivia-QA dataset             |
-
+| ILDC         | A dataset of Indian Supreme Court cases for legal judgment prediction (accept/reject decisions) |
+| ECHR          | A dataset of European Court of Human Rights cases used for predicting legal outcomes (violation vs. non-violation). |
 ---
 
 ## 🔁 Chunked Execution (for parallel / large datasets)
 
 Example: process 3rd chunk of size 2500
 ```bash
-python Hallucination.py --iteration 3 --interval 2500
+python llm_Inference_code/llm_Inference_ECHR.py --iteration 3 --interval 2500
 ```
 
 This processes rows:
@@ -114,47 +103,33 @@ end   = 10000
 
 ## 📝 Input File Format
 
-### ✔ custom_qa.csv
+### ✔ ILDC dataset
 ```
-Question,Answer
-"Is sky blue?",Yes
-"What is 2+2?",4
+text,label
+"The appellant challenged the judgment...",1
+"The court found no merit in the appeal...",0
 ```
 
-### ✔ capitals.csv / place_of_birth.csv
+### ✔ ECHR dataset
 ```
-subject,object
-Germany,Berlin
-India,New Delhi
+text,label
+"The applicant alleged a violation of rights...",1
+"No violation was found by the court...",0
 ```
 
 ---
 
-## 📁 Output Files
+## 🧠 Mid-Layer Selection (LLM + HD)
 
-All results are saved in:
+For extracting **mid-layer representations (mid3)** in the LLM+HD setup, we select three consecutive layers from the middle of the model.
 
-```
-./results/
-```
+### ✔ Layer Selection Strategy
 
-File naming format:
-```
-<model>_<dataset>_start-<x>_end-<y>_<month>_<day>.pickle
-```
+- For models with **28 layers** (e.g., Gemma):
+  [12, 13, 14]
 
-Each pickle contains:
-- question  
-- answers  
-- generated response (tokens + string)  
-- logits  
-- correctness flag  
-- MLP activations  
-- Attention activations  
-- Integrated Gradients attribution  
-
----
-
+- For models with **32 layers** (e.g., LLaMA, Mistral):
+  [14, 15, 16]
 
 
 
