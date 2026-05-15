@@ -1,14 +1,13 @@
-# 🧠 Hallucination Detection – LLM Hidden State Attribution
+# 🧠 Correctness Detection – LLM Hidden State Attribution
 
-This repository contains **Hallucination.py**, a script designed to collect hidden activations, attention outputs, and Integrated Gradients explanations from large language models (LLaMA, Falcon, OPT).  
-It supports multiple datasets and chunked execution for large-scale hallucination analysis.
+This repository contains **llm_Inference_ECHR.py** and **llm_Inference_ILDC.py**, scripts designed to collect hidden activations and attention outputs from large language models (LLaMA, Mistral, Qwen) for ECHR and ILDC datasets. The extracted internal representations are subsequently used to train correctness detectors (CDs). The training scripts and related classifier codes are provided in the `store_classifiers_all` directory. The trained CDs are applied to identify potentially incorrect predictions. The corresponding LLM+CD inference pipelines are available in the `llm_HD_Inference_code` folder.
+It supports chunked execution for large-scale correctness analysis.
 
 ---
 
 ## 🚀 Features
 
-- Supports LLaMA, Falcon, and OPT models  
-- Yes/No QA with strict question templates  
+- Supports LLaMA, Mistral, and Qwen models  
 - Works with multiple datasets (`ECHR`, `ILDC`)  
 - Extracts:  
   - Fully connected (MLP) activations  
@@ -59,7 +58,7 @@ python llm_Inference_code/llm_Inference_ECHR.py --model_name mistral-7b-instruct
 Supported models:
 - mistral-7b-instruct-v0.3  
 - Meta-Llama-3.1-8B-Instruct 
-- gemma-7b-it  
+- Qwen2.5-7B-Instruct  
 
 ---
 
@@ -71,7 +70,7 @@ Dataset options:
 | dataset_name      | description                               |
 |-------------------|-------------------------------------------|
 | ILDC         | A dataset of Indian Supreme Court cases for legal judgment prediction (accept/reject decisions) |
-| ECHR          | A dataset of European Court of Human Rights cases used for predicting legal outcomes (violation vs. non-violation). |
+| ECHR          | A dataset of European Court of Human Rights cases used for predicting legal outcomes (violation vs. no-violation). |
 ---
 
 ## 🔁 Chunked Execution (for parallel / large datasets)
@@ -94,15 +93,15 @@ end   = 10000
 ### ✔ ILDC dataset
 ```
 text,label
-"The appellant challenged the judgment...",1
-"The court found no merit in the appeal...",0
+"The appellant challenged the judgment...",1(accept)
+"The court found no merit in the appeal...",0(reject)
 ```
 
 ### ✔ ECHR dataset
 ```
 text,label
-"The applicant alleged a violation of rights...",1
-"No violation was found by the court...",0
+"The applicant alleged a violation of rights...",1(violation)
+"No violation was found by the court...",0(no-violation)
 ```
 
 ---
@@ -113,7 +112,7 @@ For extracting **mid-layer representations (mid3)** in the LLM+HD setup, we sele
 
 ### ✔ Layer Selection Strategy
 
-- For models with **28 layers** (e.g., Gemma):
+- For models with **28 layers** (e.g., Qwen):
   [12, 13, 14]
 
 - For models with **32 layers** (e.g., LLaMA, Mistral):
