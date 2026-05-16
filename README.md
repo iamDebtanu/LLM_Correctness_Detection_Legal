@@ -21,8 +21,7 @@ It supports chunked execution for large-scale correctness analysis.
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/LLM_Hallu_Legal.git
-cd LLM_Hallu_Legal
+git clone https://github.com/iamDebtanu/LLM_Hallu_Legal.git
 ```
 
 ### 2. Install dependencies
