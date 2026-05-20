@@ -25,13 +25,14 @@ Supported datasets:
 ```text
 .
 ├── llm_inference.py          # Extract hidden activations from LLMs
-├── Store_classifier.py      # Train hallucination/correctness classifier
-├── llm_HD_inference.py      # Hallucination-aware inference
+├── Store_classifier.py      # Train CD classifier
+├── llm_HD_inference.py      #  LLM+CD inference
 ├── requirements.txt
 ├── Datasets/
 │   ├── ILDC_train.csv
 │   ├── ILDC_test.csv
-│   └── test_ECHR_Dataset_binary.csv
+│   |── ECHR_train.csv
+|   └── ECHR_test.csv
 ├── saved_model/
 ├── results_llm/
 └── results_llm_HD/
@@ -207,18 +208,57 @@ Results are stored in:
 ```text
 results_llm/<DATASET_NAME>/
 ```
-
-Each saved file contains:
-
-- model predictions
-- logits
-- correctness labels
-- attention activations
-- feed-forward activations
+Two files are generated for each run.
 
 ---
 
-# Step 2 — Train Hallucination Classifier
+## 1. JSON File
+
+Contains:
+
+```text
+- sample id
+- question / input text
+- gold answer
+- model prediction
+- correctness 
+```
+
+Example:
+
+```json
+{
+  "id": 12,
+  "question": "<legal text>",
+  "gold_answer": "Accept",
+  "prediction": "Reject",
+  "correct_label": false
+}
+```
+
+Where:
+
+- `correct_label = true` → prediction correct
+- `correct_label = false` → prediction incorrect / hallucinated
+
+---
+
+## 2. Pickle File (.pkl)
+
+Contains extracted hidden activations such as:
+
+```text
+- feed-forward (fc) activations
+- attention (att) activations
+- logits
+- hidden representations
+```
+
+These features are later used to train the hallucination classifier.
+
+---
+
+# Step 2 — Train CD Classifier
 
 This script trains a feed-forward classifier on extracted hidden states.
 
@@ -226,7 +266,42 @@ The classifier predicts whether the LLM prediction is likely correct or hallucin
 
 ---
 
-## Run Training
+# ⚠️ Before Running Step 2
+
+Inside `Store_classifier.py`, update:
+
+## 1. Input File Paths
+
+Change paths for:
+
+```python
+json_file_path = "results_llm/...json"
+pickle_file_path = "results_llm/...pkl"
+```
+
+These files are generated from Step 1.
+
+---
+
+## 2. Save Directory
+
+Update classifier save directory:
+
+```python
+save_dir = "saved_model/..."
+```
+
+Example:
+
+```python
+save_dir = "saved_model/saved_model_qwen_ILDC"
+```
+
+---
+
+# ▶️ Run Training
+
+Basic command:
 
 ```bash
 python Store_classifier.py
@@ -234,79 +309,291 @@ python Store_classifier.py
 
 ---
 
-## What the Classifier Uses
+# 🔧 Important Argument Parsers
 
-Possible feature types:
+The training script supports several argument parsers for flexible experiments.
 
-- middle attention layers
-- last attention layers
-- middle feed-forward layers
-- last feed-forward layers
+---
 
-The classifier architecture:
+## 1. Dataset Selection
+
+Choose which dataset to train on.
+
+```bash
+python Store_classifier.py \
+    --dataset_name ILDC
+```
+
+Possible values:
 
 ```text
-Input → Linear(256) → ReLU → Dropout → Linear(2)
+ILDC
+ECHR
 ```
 
 ---
 
-# 💾 Saved Models
+## 2. Training Mode
 
-Trained classifiers are stored inside:
+Controls how hidden representations are used.
+
+```bash
+python Store_classifier.py \
+    --dataset_name ILDC \
+    --mode all
+```
+
+Possible values:
 
 ```text
-saved_model/
+all
+single
+multi
+average
+mid3
+last3
+```
+
+Meaning:
+
+| Mode | Description |
+|---|---|
+| all | Use all transformer layers |
+| single | use one specific layer |
+| multi | use selected multiple layers |
+| average | use Average representations across layers |
+| mid3 | Use middle 3 layers |
+| last3 | Use final 3 layers |
+
+---
+
+## 3. Single Layer Training
+
+Used with:
+
+```text
+--mode single
 ```
 
 Example:
 
-```text
-saved_model/saved_model_qwen_ILDC/
+```bash
+python Store_classifier.py \
+    --dataset_name ILDC \
+    --mode single \
+    --layer 12
 ```
 
-Saved checkpoint contains:
-
-- model weights
-- normalization statistics
-- input dimensions
+This trains classifier using only layer 12 representation.
 
 ---
 
-# Step 3 — Hallucination-Aware Inference
+## 4. Multiple Layer Training
+
+Used with:
+
+```text
+--mode multi
+```
+
+Example:
+
+```bash
+python Store_classifier.py \
+    --dataset_name ILDC \
+    --mode multi \
+    --layers 8 9 10
+```
+
+This combines representations from layers 8, 9, and 10.
+
+---
+
+## 5. Representation Type
+
+Choose hidden representation type.
+
+```bash
+python Store_classifier.py \
+    --dataset_name ILDC \
+    --representation fc
+```
+
+Possible values:
+
+```text
+fc
+att
+```
+
+Meaning:
+
+| Representation | Description |
+|---|---|
+| fc | Feed-forward activations |
+| att | Attention activations |
+
+---
+
+## 6. Full Example Commands
+
+### Example A — Last 3 Feed-Forward Layers
+
+```bash
+python Store_classifier.py \
+    --dataset_name ILDC \
+    --mode last3 \
+    --representation fc
+```
+
+---
+
+### Example B — Single Attention Layer
+
+```bash
+python Store_classifier.py \
+    --dataset_name ECHR \
+    --mode single \
+    --layer 15 \
+    --representation att
+```
+
+---
+
+### Example C — Multiple FC Layers
+
+```bash
+python Store_classifier.py \
+    --dataset_name ILDC \
+    --mode multi \
+    --layers 5 6 7 8 \
+    --representation fc
+```
+
+# Step 3 — LLM+CD Inference
 
 This script:
 
 1. Runs normal LLM inference
 2. Extracts hidden states
-3. Uses the trained classifier to detect hallucinations
-4. Modifies the final prediction based on hallucination confidence
+3. Uses the trained classifier to detect correctness
+4. Modifies the final prediction based on correctness confidence
 
 ---
-
-## Run Command
+# ▶️ Basic Run
 
 ```bash
-python llm_HD_inference.py \
-    --dataset_name ILDC \
-    --model_name Qwen2.5-7B-Instruct
+python llm_HD_inference.py
+```
+
+# ▶️ Example Commands with Different Arguments
+
+Before running Step 3, update the following paths inside:
+
+```text
+llm_HD_inference.py
 ```
 
 ---
 
-# Important Arguments
+# ⚠️ Important Path Configuration
 
-| Argument | Description |
-|---|---|
-| dataset_name | ILDC or ECHR |
-| model_name | LLM to use |
-| feature_type | Hidden-state feature selection |
-| decision_mode | REF or REV |
-| max_new_tokens | Maximum generated tokens |
+## 1. Dataset Path
+
+Update dataset CSV path:
+
+```python
+csv_path = "Datasets/ILDC_test.csv"
+```
+
+Examples:
+
+```python
+csv_path = "Datasets/ILDC_test.csv"
+```
 
 ---
 
-## Feature Types
+## 2. Classifier Model Path
+
+Choose the trained classifier checkpoint from Step 2.
+
+Example:
+
+```python
+classifier_path = "saved_model/saved_model_qwen_ILDC/model.pth"
+```
+
+---
+
+## 3. Results Save Directory
+
+Update output directory:
+
+```python
+save_dir = "results_llm_HD/"
+```
+
+Example:
+
+```python
+save_dir = "results_llm_HD/qwen_ILDC"
+```
+
+---
+
+# ⚠️ Important Note About Feature Types
+
+The feature type used in Step 3 must match the classifier trained in Step 2.
+
+Example:
+
+If classifier was trained using:
+
+```bash
+--mode last3 --representation fc
+```
+
+then Step 3 should also use:
+
+```bash
+--feature_type last3_fc
+```
+
+Otherwise, feature dimensions will not match.
+
+---
+
+## Example 1 — Run on ILDC
+
+```bash
+python llm_HD_inference.py \
+    --dataset_name ILDC \
+    --model_name Qwen2.5-7B-Instruct \
+    --feature_type last3_fc
+```
+
+---
+
+## Example 2 — Run on ECHR Dataset
+
+```bash
+python llm_HD_inference.py \
+    --dataset_name ECHR \
+    --model_name Meta-Llama-3.1-8B-Instruct \
+    --feature_type mid3_att
+```
+
+---
+
+## Example 3 — Use Different Feature Type
+
+```bash
+python llm_HD_inference.py \
+    --feature_type last3_att
+```
+
+Possible values:
 
 ```text
 mid3_fc
@@ -314,46 +601,64 @@ last3_fc
 mid3_att
 last3_att
 ```
-
 Meaning:
 
 - `mid3` = middle 3 transformer layers
 - `last3` = final 3 transformer layers
 - `fc` = feed-forward activations
-- `att` = attention activations
-
+- `att` = attention activation
 ---
 
-# Decision Modes
+## Example 4 — Use REF Decision Mode
 
-## REF Mode
+```bash
+python llm_HD_inference.py \
+    --decision_mode REF
+```
 
-If hallucination is detected:
+Behavior:
 
 ```text
-Return: "Not Sure"
+if Hallucination detected → Return "Not Sure"
 ```
 
 ---
 
-## REV Mode
+## Example 5 — Use REV Decision Mode
 
-If hallucination is detected:
-
-```text
-Return opposite prediction
+```bash
+python llm_HD_inference.py \
+    --decision_mode REV
 ```
 
-Example:
+Behavior:
 
 ```text
-Accept → Reject
-Violation → No-Violation
+if Hallucination detected → Reverse original prediction which is predicted by llm
 ```
 
 ---
 
-# 📤 Output of Hallucination-Aware Inference
+## Example 6 — Change Maximum Generation Length
+
+```bash
+python llm_HD_inference.py \
+    --max_new_tokens 5
+```
+
+---
+
+## Example 7 — Full Example
+
+```bash
+python llm_HD_inference.py \
+    --dataset_name ILDC \
+    --model_name Qwen2.5-7B-Instruct \
+    --feature_type last3_fc \
+    --decision_mode REV \
+    --max_new_tokens 5
+```
+# 📤 Output of LLM+CD Inference
 
 Stored in:
 
@@ -361,31 +666,31 @@ Stored in:
 results_llm_HD/
 ```
 
-The output includes:
+Step 3 generates a JSON file containing:
 
-- original LLM prediction
-- hallucination score
-- corrected prediction
-- hidden-state features
+```text
+- sample id
+- question / input text
+- gold answer
+- LLM+CD prediction
+```
 
----
+Example:
+
+```json
+{
+  "id": 21,
+  "question": "<legal text>",
+  "gold_answer": "Accept",
+  "LLM+CD prediction": "Not Sure"
+}
+```
 
 
 # ⚠️ Important Notes
 
-## 1. Update Dataset Paths
 
-Inside scripts, verify dataset paths:
-
-```python
-"csv_path": "Datasets/ILDC_train.csv"
-```
-
-Modify them if your dataset location is different.
-
----
-
-## 2. GPU Selection
+## GPU Selection
 
 The scripts currently use:
 
