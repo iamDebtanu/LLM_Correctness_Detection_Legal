@@ -236,7 +236,7 @@ def load_dataset_data():
 
         data.append((question, answer))
 
-    return data[:20]
+    return data
 
 
 # ============================================================
