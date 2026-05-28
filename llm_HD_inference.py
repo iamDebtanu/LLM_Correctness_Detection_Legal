@@ -281,7 +281,7 @@ def load_dataset_from_csv():
 
         dataset.append((question, answer))
 
-    return dataset[:20]
+    return dataset
 
 
 # ============================================================
