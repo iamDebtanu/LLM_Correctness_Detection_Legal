@@ -1,20 +1,21 @@
 # Peeking Inside LLMs: Leveraging Internal Artifacts of LLMs for Enhancing Reliability in Legal Classification
-Long Paper accepted at `ASAIL 2026!`
-This repository contains scripts to extract hidden-state activations from instruction-tuned LLMs, train a Correctness Detector (CD) classifier, and run hallucination-aware inference on legal datasets.
+Long Paper accepted at `Automated Semantic Analysis of Information in Law (ASAIL 2026)` co-located with the `International Conference on Artificial Intelligence and Law (ICAIL 2026)`. This repository contains scripts to extract hidden-state activations from instruction-tuned LLMs, train a Correctness Detector (CD) classifier, and run hallucination-aware inference on legal datasets.
 
+---
+## Supported LLMs and Datasets
 Supported instruction-tuned LLMs: `Meta-Llama-3.1-8B-Instruct`,`Mistral-7B-Instruct`,`Qwen2.5-7B-Instruct`
 
 Supported datasets: `ILDC` (Labels: 1=Accept, 0=Reject), `ECHR` (Labels: 1=Violation, 0=No-Violation)
 
 ---
 
-# 📂 Repository Structure
+## 📂 Repository Structure
 
 ```text
 .
 ├── llm_inference.py         # Extract hidden activations from LLMs
 ├── Store_classifier.py      # Train CD classifier and store
-├── llm_HD_inference.py      #  LLM+CD hallucination-aware inference
+├── llm_HD_inference.py      # LLM+CD hallucination-aware inference
 ├── requirements.txt
 ├── Datasets/
 │   ├── ILDC_train.csv
@@ -28,27 +29,24 @@ Supported datasets: `ILDC` (Labels: 1=Accept, 0=Reject), `ECHR` (Labels: 1=Viola
 
 ---
 
-# ⚙️ Environment Setup
-
-## 1. Clone Repository
+## ⚙️ Environment Setup
 
 ```bash
+# Clone the repository
 git clone https://github.com/iamDebtanu/LLM_Hallu_Legal.git
 cd LLM_Hallu_Legal
-```
-
-## 2. Setup Environment
-
-```bash
+# Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate   # On Windows use: venv\Scripts\activate
+# Install dependencies
 pip install -r requirements.txt
+# Hugging Face Authentication
 huggingface-cli login
 ```
  Note: Access approval is required via Hugging Face for gated models like `meta-llama/Meta-Llama-3.1-8B-Instruct`
 # Execution Pipeline
 
-## Step 1 — Run LLM Inference & Feature Extraction
+### Step 1 — Run LLM Inference & Feature Extraction
 
 Extracts hidden-state activations(`.pkl`) and LLM outputs (`.json`).
 
@@ -60,14 +58,14 @@ python llm_inference.py --dataset_name ECHR --model_name Qwen2.5-7B-Instruct
 ```
 Use `--iteration` and `--interval` to chunk process large datasets across multiple runs or GPUs
 
-Output: Stored in `results_llm/<DATASET_NAME>/`
+Output: Stored in `results_llm/<dataset_name>/`
 
-## Step 2 — Train CD Classifier
+### Step 2 — Train CD Classifier
 
 Trains a feed-forward classifier on extracted hidden states to predicts whether the LLM prediction is likely correct or hallucinated.
 
 ```bash
-# ⚠️ FIRST: Open Store_classifier.py and update input JSON/PKL paths & save_dir.
+# FIRST: Open Store_classifier.py and update input JSON/PKL paths & save_dir.
 python Store_classifier.py --dataset_name ILDC --mode last3 --representation fc
 ```
 Key Arguments:
@@ -90,14 +88,13 @@ python Store_classifier.py --dataset_name ILDC --mode last3 --representation fc
 python Store_classifier.py --dataset_name ECHR --mode single --layer 15 --representation att
 ```
 
-# Step 3 — Hallucination-Aware Inference (LLM + CD)
+### Step 3 — Hallucination-Aware Inference (LLM + CD)
 
 Integrates the base LLM with trained CD classifier to flag or fix uncertain answers.
 
----
 
 ```bash
-# ⚠️ FIRST: Open llm_HD_inference.py and update csv_path, classifier_path, and save_dir.
+# FIRST: Open llm_HD_inference.py and update csv_path, classifier_path, and save_dir.
 python llm_HD_inference.py --dataset_name ILDC --model_name Qwen2.5-7B-Instruct --feature_type last3_fc --decision_mode REF
 ```
 - `--feature_type` : Must match Step 2 training configuration (mid3_fc, last3_fc, mid3_att, last3_att).
@@ -105,3 +102,16 @@ python llm_HD_inference.py --dataset_name ILDC --model_name Qwen2.5-7B-Instruct 
 - `--max_new_tokens` : Adjust maximum generated token during the execution pass (e.g., `--max_new_tokens 5`).
 
 Output: Stored in `results_llm_HD/`
+
+## Citation
+
+If you find this work useful in your research, please cite:
+
+```bash
+@inproceedings{santra2026llmcd, 
+ title= "Peeking Inside {LLMs}: Leveraging Internal Artifacts of {LLMs} for Enhancing Reliability in Legal Classification", 
+ author= "Santra, Sudipta and Datta, Debtanu and Ghosh, Saptarshi",
+ booktitle= "Proceedings of the 8th Workshop on Automated Semantic Analysis of Information in Law co-located with the 21st International Conference on Artificial Intelligence and Law ({ICAIL} 2026)", 
+ year= "2026"
+ }
+```
