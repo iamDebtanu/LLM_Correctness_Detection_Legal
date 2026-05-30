@@ -6,7 +6,7 @@ Long Paper accepted at **Workshop on Automated Semantic Analysis of Information 
 ├── scripts/
 │   ├── llm_inference.py         # Extract hidden activations and LLM predictions
 │   ├── Store_classifier.py      # Train and save the CD classifier
-│   └── llm_HD_inference.py      # Perform hallucination-aware inference using LLM+CD
+│   └── llm_CD_inference.py      # Performing inference of LLM+CD system
 ├── requirements.txt             # Required libraries for running the repository
 ```
 
@@ -70,8 +70,8 @@ The `--mode` argument determines how layer representations are extracted: `all` 
 
 Integrates the base LLM with a trained CD classifier to assess the reliability of the LLM predictions.
 ```bash
-# Open llm_HD_inference.py file and update csv_path, classifier_path, and output_dir.
-python llm_HD_inference.py --dataset_name ILDC --model_name Qwen2.5-7B-Instruct --feature_type last3_fc --decision_mode REF
+# Open llm_CD_inference.py file and update csv_path, classifier_path, and output_dir.
+python llm_CD_inference.py --dataset_name ILDC --model_name Qwen2.5-7B-Instruct --feature_type last3_fc --decision_mode REF
 ```
 
 | Argument | Options | Description |
