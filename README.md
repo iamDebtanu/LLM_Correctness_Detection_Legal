@@ -35,7 +35,7 @@ Extracts hidden-state activations(`.pkl`) and LLM outputs (`.json`).
 
 ```bash
 # Basic 
-python llm_inference.py--dataset_name ILDC
+python llm_inference.py --dataset_name ILDC
 # With custom model and dataset
 python llm_inference.py --dataset_name ECHR --model_name Qwen2.5-7B-Instruct
 ```
@@ -45,7 +45,7 @@ Output: Stored in `results_llm/<dataset_name>/`
 
 ### Step 2: Train CD Classifier
 
-Trains a feed-forward classifier on extracted hidden states to predicts whether the LLM prediction is likely correct or hallucinated.
+Trains a feed-forward classifier on extracted hidden states to predict whether the LLM prediction is likely correct or hallucinated.
 
 ```bash
 # FIRST: Open Store_classifier.py and update input JSON/PKL paths & save_dir.
@@ -60,7 +60,7 @@ Key Arguments:
 | `--layer`          | `int`                                                | Layer index for `single` mode            |
 | `--layers`         | `multiple ints`                                      | Multiple layer indices for `multi` mode  |
 
-where `all` -> Use all transformer layers, `single` -> use one specific layer, `multi` -> use selected multiple layers, `average` -> use average representations across layers, `mid3` -> Use average middle 3 layers and `last3` -> Use average final 3 layers.
+where `all` -> Use all transformer layers, `single` -> use one specific layer, `multi` -> use selected multiple layers, `average` -> use average representations across layers, `mid3` -> Use average middle 3 layers, and `last3` -> Use average final 3 layers.
 
 Examples:
 ```bash
