@@ -1,5 +1,5 @@
 # Peeking Inside LLMs: Leveraging Internal Artifacts of LLMs for Enhancing Reliability in Legal Classification
-Long Paper accepted at `Automated Semantic Analysis of Information in Law (ASAIL 2026)` co-located with the `International Conference on Artificial Intelligence and Law (ICAIL 2026)`. This repository contains scripts to extract hidden-state activations from instruction-tuned LLMs, train a Correctness Detector (CD) classifier, and run hallucination-aware inference on legal datasets.
+Long Paper accepted at `Automated Semantic Analysis of Information in Law (ASAIL 2026)` co-located with the `International Conference on Artificial Intelligence and Law (ICAIL 2026)`. This repository contains the scripts implemented in this work.
 
 ---
 ## Supported LLMs and Datasets
