@@ -7,7 +7,7 @@ Long Paper accepted at `Automated Semantic Analysis of Information in Law (ASAIL
 ├── llm_inference.py         # Extract hidden activations from LLMs
 ├── Store_classifier.py      # Train CD classifier and store
 ├── llm_HD_inference.py      # LLM+CD hallucination-aware inference
-├── requirements.txt
+├── requirements.txt         # Required libraries for running the repository
 ```
 
 ---
@@ -19,37 +19,44 @@ Long Paper accepted at `Automated Semantic Analysis of Information in Law (ASAIL
 git clone https://github.com/iamDebtanu/LLM_Correctness_Detection_Legal.git
 cd LLM_Correctness_Detection_Legal
 # Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate   # On Windows use: venv\Scripts\activate
-# Install dependencies
+conda create -n llmcd python=3.12
+conda activate llmcd
+# Install required dependencies
 pip install -r requirements.txt
-# Hugging Face Authentication
+# Hugging Face Authentication (Access approval is required via Hugging Face for gated models like `meta-llama/Meta-Llama-3.1-8B-Instruct`)
 huggingface-cli login
 ```
- Note: Access approval is required via Hugging Face for gated models like `meta-llama/Meta-Llama-3.1-8B-Instruct`
 # Execution Pipeline
 
-### Step 1: Run LLM Inference & Feature Extraction
-
-Extracts hidden-state activations(`.pkl`) and LLM outputs (`.json`).
+### Step 1 — Run LLM Inference & Artifacts Extraction
 
 ```bash
-# Basic 
-python llm_inference.py --dataset_name ILDC
 # With custom model and dataset
 python llm_inference.py --dataset_name ECHR --model_name Qwen2.5-7B-Instruct
 ```
-Use `--iteration` and `--interval` to chunk process large datasets across multiple runs or GPUs
+Key Arguments
 
-Output: Stored in `results_llm/<dataset_name>/`
+| Argument         | Options                                                                  | Description                            |
+|------------------|--------------------------------------------------------------------------|----------------------------------------|
+| `--dataset_name`  | `ILDC`, `ECHR` | Dataset to run inference on. ([ILDC Train](https://huggingface.co/datasets/Exploration-Lab/IL-TUR/viewer/cjpe/single_train), [ILDC Test](https://huggingface.co/datasets/Exploration-Lab/IL-TUR/viewer/cjpe/test), [ECHR Dataset](https://archive.org/download/ECHR-ACL2019))                                                                                           |
+| `--model_name`   | `Meta-Llama-3.1-8B-Instruct`, `Mistral-7B-Instruct`, `Qwen2.5-7B-Instruct` | Model used for inference.            |
+| `--iteration`    | Integer (e.g., `0`, `1`, `2`, ...)                                       | Chunk index for parallel execution.    |
+| `--interval`     | Positive integer (e.g., `2500`)                                          | Number of samples processed per chunk. |
 
-### Step 2: Train CD Classifier
+**Output:** Saves generated LLM outputs in `.json` files and extracted hidden-state activations in `.pkl` files under `results_llm/<dataset_name>/`.
 
-Trains a feed-forward classifier on extracted hidden states to predict whether the LLM prediction is likely correct or hallucinated.
+### Step 2 — Train CD Classifier
+
+Trains a feed-forward classifier on extracted hidden states to predicts whether the LLM prediction is likely correct or incorrect.
 
 ```bash
 # FIRST: Open Store_classifier.py and update input JSON/PKL paths & save_dir.
 python Store_classifier.py --dataset_name ILDC --mode last3 --representation fc
+# Average of last 3 feed-forward layers
+python Store_classifier.py --dataset_name ILDC --mode last3 --representation fc
+# Single attention layer
+python Store_classifier.py --dataset_name ECHR --mode single --layer 15 --representation att
+
 ```
 Key Arguments:
 
@@ -60,30 +67,30 @@ Key Arguments:
 | `--layer`          | `int`                                                | Layer index for `single` mode            |
 | `--layers`         | `multiple ints`                                      | Multiple layer indices for `multi` mode  |
 
-where `all` -> Use all transformer layers, `single` -> use one specific layer, `multi` -> use selected multiple layers, `average` -> use average representations across layers, `mid3` -> Use average middle 3 layers, and `last3` -> Use average final 3 layers.
+The `--mode` argument determines how layer representations are extracted: `all` (all layers), `single` (one selected layer), `multi` (multiple selected layers), `average` (average of specified layers), `mid3` (average of the middle three layers), and `last3` (average of the final three layers).
 
-Examples:
-```bash
-# Average of last 3 feed-forward layers
-python Store_classifier.py --dataset_name ILDC --mode last3 --representation fc
+**Output:** Saves the trained CD classifier as a `.pth` file and stores the corresponding AUROC score in a `.txt` file under `save_dir`.
 
-# Single attention layer
-python Store_classifier.py --dataset_name ECHR --mode single --layer 15 --representation att
-```
+### Step 3 — Hallucination-Aware Inference (LLM + CD)
 
-### Step 3: Hallucination-Aware Inference (LLM + CD)
-
-Integrates the base LLM with a trained CD classifier to flag or fix uncertain answers.
+Integrates the base LLM with trained CD classifier to assess the reliability of the LLM.
 
 ```bash
-# FIRST: Open llm_HD_inference.py and update csv_path, classifier_path, and save_dir.
+# FIRST: Open llm_HD_inference.py and update csv_path, classifier_path, and output_dir.
 python llm_HD_inference.py --dataset_name ILDC --model_name Qwen2.5-7B-Instruct --feature_type last3_fc --decision_mode REF
 ```
-- `--feature_type` : Must match Step 2 training configuration (mid3_fc, last3_fc, mid3_att, last3_att).
-- `--decision_mode` : `REF` (return "Not Sure") or `REV` (reverse prediction)
-- `--max_new_tokens` : Adjust maximum generated token during the execution pass (e.g., `--max_new_tokens 5`).
+Key Arguments
 
-Output: Stored in `results_llm_HD/`
+| Argument | Options | Description |
+|--------------|----------|-------------|
+| `--dataset_name` | `ILDC`, `ECHR` | Dataset used for inference. |
+| `--model_name` | `Meta-Llama-3.1-8B-Instruct`, `Mistral-7B-Instruct`, `Qwen2.5-7B-Instruct` | Base LLM used for prediction. |
+| `--feature_type` | `mid3_fc`, `last3_fc`, `mid3_att`, `last3_att` | Feature representation used by the trained CD classifier. Must match Step 2 training configuration. |
+| `--decision_mode` | `REF`, `REV` | Hallucination handling strategy: `REF` returns **"Not Sure"** when the CD predicts a hallucination, while `REV` reverses the LLM prediction. |
+| `--max_new_tokens` | Positive integer | Maximum number of tokens generated by the LLM. |
+
+
+**Output:** Saves generated LLM + CD outputs in `.json` files.
 
 ## Citation
 
