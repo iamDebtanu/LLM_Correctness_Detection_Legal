@@ -1,30 +1,13 @@
 # Peeking Inside LLMs: Leveraging Internal Artifacts of LLMs for Enhancing Reliability in Legal Classification
-Long Paper accepted at `Automated Semantic Analysis of Information in Law (ASAIL 2026)` co-located with the `International Conference on Artificial Intelligence and Law (ICAIL 2026)`. This repository contains the scripts implemented in this work.
-
----
-## Supported LLMs and Datasets
-Supported instruction-tuned LLMs: `Meta-Llama-3.1-8B-Instruct`,`Mistral-7B-Instruct`,`Qwen2.5-7B-Instruct`
-
-Supported datasets: `ILDC` (Labels: 1=Accept, 0=Reject), `ECHR` (Labels: 1=Violation, 0=No-Violation)
-
----
+Long Paper accepted at `Automated Semantic Analysis of Information in Law (ASAIL 2026)` co-located with the `International Conference on Artificial Intelligence and Law (ICAIL 2026)`. This repository contains the scripts developed in this work.
 
 ## 📂 Repository Structure
 
 ```text
-.
 ├── llm_inference.py         # Extract hidden activations from LLMs
 ├── Store_classifier.py      # Train CD classifier and store
 ├── llm_HD_inference.py      # LLM+CD hallucination-aware inference
 ├── requirements.txt
-├── Datasets/
-│   ├── ILDC_train.csv
-│   ├── ILDC_test.csv
-│   |── ECHR_train.csv
-|   └── ECHR_test.csv
-├── saved_model/             # Trained CD models saved here
-├── results_llm/             # llm outputs
-└── results_llm_HD/          # llm+CD outputs
 ```
 
 ---
@@ -33,8 +16,8 @@ Supported datasets: `ILDC` (Labels: 1=Accept, 0=Reject), `ECHR` (Labels: 1=Viola
 
 ```bash
 # Clone the repository
-git clone https://github.com/iamDebtanu/LLM_Hallu_Legal.git
-cd LLM_Hallu_Legal
+git clone https://github.com/iamDebtanu/LLM_Correctness_Detection_Legal.git
+cd LLM_Correctness_Detection_Legal
 # Create and activate virtual environment
 python -m venv venv
 source venv/bin/activate   # On Windows use: venv\Scripts\activate
@@ -46,7 +29,7 @@ huggingface-cli login
  Note: Access approval is required via Hugging Face for gated models like `meta-llama/Meta-Llama-3.1-8B-Instruct`
 # Execution Pipeline
 
-### Step 1 — Run LLM Inference & Feature Extraction
+### Step 1: Run LLM Inference & Feature Extraction
 
 Extracts hidden-state activations(`.pkl`) and LLM outputs (`.json`).
 
@@ -60,7 +43,7 @@ Use `--iteration` and `--interval` to chunk process large datasets across multip
 
 Output: Stored in `results_llm/<dataset_name>/`
 
-### Step 2 — Train CD Classifier
+### Step 2: Train CD Classifier
 
 Trains a feed-forward classifier on extracted hidden states to predicts whether the LLM prediction is likely correct or hallucinated.
 
@@ -88,10 +71,9 @@ python Store_classifier.py --dataset_name ILDC --mode last3 --representation fc
 python Store_classifier.py --dataset_name ECHR --mode single --layer 15 --representation att
 ```
 
-### Step 3 — Hallucination-Aware Inference (LLM + CD)
+### Step 3: Hallucination-Aware Inference (LLM + CD)
 
-Integrates the base LLM with trained CD classifier to flag or fix uncertain answers.
-
+Integrates the base LLM with a trained CD classifier to flag or fix uncertain answers.
 
 ```bash
 # FIRST: Open llm_HD_inference.py and update csv_path, classifier_path, and save_dir.
