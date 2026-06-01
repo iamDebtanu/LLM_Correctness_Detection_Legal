@@ -1,5 +1,5 @@
 # ============================================================
-# IMPORTS
+# IMPORTS NECESSARY LIBRARY
 # ============================================================
 
 import os
@@ -27,7 +27,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 # ============================================================
-# FEED FORWARD CLASSIFIER (CD)
+# CORRECTNESS DETECTOR (CD)
 # ============================================================
 
 class FFClassifier(torch.nn.Module):
@@ -98,8 +98,8 @@ parser.add_argument(
     default="REF",
     choices=["REF", "REV"],
     help=(
-        "REF: return 'Not Sure' when hallucination detected. "
-        "REV: return opposite class when hallucination detected."
+        "REF: return 'Not Sure' when the CD classifies as incorrect."
+        "REV: return opposite class of LLM prediction when the CD classifies as incorrect."
     )
 )
 
@@ -120,7 +120,7 @@ DATASET_CONFIG = {
             0: "Reject"
         },
         "classifier_path": "saved_model/saved_model_qwen_ILDC/att_mid3/mid3_layers.pth",
-        "output_dir": "results_llm_HD/ILDC",
+        "output_dir": "results_llm_CD/ILDC",
         "system_prompt": (
                     "You are a legal expert specialized in Indian law. "
                     "Your task is to analyze the given case proceeding strictly based on "
@@ -146,7 +146,7 @@ DATASET_CONFIG = {
             0: "No-Violation"
         },
         "classifier_path": "saved_model/saved_model_meta_ECHR/att_mid3/mid3_layers.pth",
-        "output_dir": "results_llm_HD/ECHR",
+        "output_dir": "results_llm_CD/ECHR",
         "system_prompt": (
                     "You are a legal expert specialized in human rights law under the "
                     "European Convention on Human Rights (ECHR). "
@@ -171,10 +171,10 @@ config = DATASET_CONFIG[args.dataset_name]
 
 
 # ============================================================
-# LOAD TRAINED HALLUCINATION CLASSIFIER
+# LOAD TRAINED CD CLASSIFIER
 # ============================================================
 
-HALLUCINATION_THRESHOLD = 0.0
+CD_THRESHOLD = 0.0
 
 ckpt = torch.load(
     config["classifier_path"],
@@ -182,9 +182,9 @@ ckpt = torch.load(
     weights_only=False
 )
 
-hallucination_clf = FFClassifier(ckpt["input_dim"]).to(device)
-hallucination_clf.load_state_dict(ckpt["state_dict"])
-hallucination_clf.eval()
+CD_clf = FFClassifier(ckpt["input_dim"]).to(device)
+CD_clf.load_state_dict(ckpt["state_dict"])
+CD_clf.eval()
 
 mean = ckpt["mean"].detach().cpu().numpy()
 std = ckpt["std"].detach().cpu().numpy()
@@ -285,7 +285,7 @@ def load_dataset_from_csv():
 
 
 # ============================================================
-# BUILD CHAT PROMPT
+# BUILD CHAT PROMPT FOR LLM
 # ============================================================
 
 
@@ -346,7 +346,7 @@ def get_middle_indices(total_layers):
     Return indices of middle 3 layers dynamically.
 
     Examples:
-        32 layers -> [14, 15, 16]
+        32 layers -> [14, 15, 16] (indices)
         28 layers -> [12, 13, 14]
         60 layers -> [29, 30, 31]
     """
@@ -550,7 +550,7 @@ def generate_response(
 ):
     generated_tokens = []
 
-    hall_score = None
+    CD_score = None
 
     for step in range(max_length):
 
@@ -561,7 +561,7 @@ def generate_response(
             next_token = logits[:, -1].argmax(dim=-1)
 
         # ====================================================
-        # FIRST TOKEN HALLUCINATION CHECK
+        # FIRST TOKEN CORRECTNESS CHECK
         # ====================================================
 
         if step == 0:
@@ -584,13 +584,13 @@ def generate_response(
                     dtype=torch.float32
                 ).to(device)
 
-                hall_logits = hallucination_clf(
+                CD_logits = CD_clf(
                     feature_tensor
                 )
 
-                hall_score = (
-                    hall_logits[0, 1]
-                    - hall_logits[0, 0]
+                CD_score = (
+                    CD_logits[0, 1]
+                    - CD_logits[0, 0]
                 ).item()
 
             # =================================================
@@ -601,7 +601,7 @@ def generate_response(
 
             if (
                 args.decision_mode == "REF"
-                and hall_score < HALLUCINATION_THRESHOLD
+                and CD_score < CD_THRESHOLD
             ):
 
                 not_sure_ids = tokenizer(
@@ -645,12 +645,12 @@ def generate_response(
     # ========================================================
     # REV MODE
     # ========================================================
-    # Reverse final label if hallucination detected
+    # Reverse final label if the CD classifies as incorrect
     # ========================================================
 
     if (
         args.decision_mode == "REV"
-        and hall_score < HALLUCINATION_THRESHOLD
+        and CD_score < CD_THRESHOLD
     ):
 
         predicted_label = extract_label(
@@ -769,7 +769,7 @@ def main():
             )
 
     # --------------------------------------------------------
-    # Output file
+    # Output file for saving result 
     # --------------------------------------------------------
 
     os.makedirs(config["output_dir"], exist_ok=True)
