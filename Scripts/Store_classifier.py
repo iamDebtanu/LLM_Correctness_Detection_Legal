@@ -1,5 +1,5 @@
 # ============================================================
-# Import Libraries
+# Import Necessary Libraries
 # ============================================================
 
 import os
@@ -131,7 +131,7 @@ set_seed(SEED)
 
 
 # ============================================================
-# Feed Forward Classifier
+# Feed Forward Classifier (CD)
 # ============================================================
 
 class FFClassifier(torch.nn.Module):
@@ -370,8 +370,8 @@ def get_mid3_layers(total_layers):
     Dynamically select middle 3 layers.
 
     Example:
-    32 layers -> [15, 16, 17]
-    28 layers -> [13, 14, 15]
+    32 layers -> [14, 15, 16] (indices)
+    28 layers -> [12, 13, 14]
     """
 
     mid = total_layers // 2
