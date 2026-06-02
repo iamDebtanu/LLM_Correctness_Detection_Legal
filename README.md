@@ -30,8 +30,8 @@ huggingface-cli login
 
 Runs the selected LLM on the dataset and extracts internal artifacts for CD training
 ```bash
-# With custom model and dataset
-python llm_inference.py --dataset_name ECHR --model_name Qwen2.5-7B-Instruct
+# With model and dataset
+python llm_inference.py --dataset_name ECHR --model_name Llama-3.1-8B-Instruct
 ```
 
 | Argument         | Options                                                                  | Description                            |
