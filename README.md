@@ -1,5 +1,5 @@
 # Peeking Inside LLMs: Leveraging Internal Artifacts of LLMs for Enhancing Reliability in Legal Classification
-Long Paper accepted at **Workshop on Automated Semantic Analysis of Information in Law (ASAIL 2026)**, co-located with the **International Conference on Artificial Intelligence and Law (ICAIL 2026)**. This repository contains the scripts developed in this work.
+Long Paper accepted at **Workshop on Automated Semantic Analysis of Information in Law (ASAIL 2026)**, co-located with the **International Conference on Artificial Intelligence and Law (ICAIL 2026)**. This repository contains the scripts developed in this work. <a href="https://arxiv.org/abs/2606.20929">[Paper]</a>
 
 ## 📂 Repository Structure
 ```text
